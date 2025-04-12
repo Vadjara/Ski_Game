@@ -10,6 +10,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private KeyCode leftInput, rightInput;
     [SerializeField] private Transform groundPoint;
     [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private float knockBackForce = 200, knockUpForce = 200;
+    private bool isHurt = false;
 
     private float speed = 0;
     private Rigidbody rb;
@@ -20,9 +22,33 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         animator = GetComponent<Animator>();
     }
+        private void OnEnable()
+    {
+        GameEvents.TakeDamage += TakeDamage;
+    }
+
+    public void OnDisable()
+    {
+        GameEvents.TakeDamage -= TakeDamage;
+    }
+    private void TakeDamage()
+    {
+        Debug.Log("Player is hurt");
+        rb.AddForce(-transform.forward * knockBackForce);
+        rb.AddForce(transform.up * knockUpForce);
+        isHurt = true;
+        Invoke("Recover", 1.5f);
+    }
+
+    private void Recover()
+    {
+        isHurt = false;
+    }
 
     private void FixedUpdate()
     {
+        if (isHurt)
+            return;
         float angle = Mathf.Abs(transform.eulerAngles.y - 180);
         acceleration = Remap(0, 90, maxAcceleration, minAcceleration, angle);
         speed += acceleration * Time.fixedDeltaTime;
@@ -36,7 +62,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         bool isGrounded = Physics.Linecast(transform.position, groundPoint.position, groundLayer);
-        if (isGrounded)
+        if (isGrounded && !isHurt)
         {
             if (Input.GetKey(leftInput) && transform.eulerAngles.y < 269)
             {
@@ -50,6 +76,8 @@ public class PlayerController : MonoBehaviour
         }
 
     }
+
+
 
     // remaps a number from a given range into a new range
     private float Remap(float oldMin, float oldMax, float newMin, float newMax, float oldValue)
